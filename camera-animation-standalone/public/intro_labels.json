@@ -1,0 +1,140 @@
+[
+  {
+    "id": 1,
+    "text": [
+      {
+        "text": "The fantastic factory inside me.",
+        "lang": "en"
+      }
+    ],
+    "isAnimation": true,
+    "appearFrame": 1,
+    "disappearFrame": 700,
+    "animation": {
+      "frame": {
+        "first_value": 1,
+        "second_value": 700
+      }
+    },
+    "position": {
+      "x": 0.0,
+      "y": -1.331,
+      "z": -0.0
+    }
+  },
+  {
+    "id": 2,
+    "text": [
+      {
+        "text": "Organ System",
+        "lang": "en"
+      }
+    ],
+    "isAnimation": true,
+    "appearFrame": 101,
+    "disappearFrame": 275,
+    "animation": {
+      "frame": {
+        "first_value": 101,
+        "second_value": 275
+      }
+    },
+    "position": {
+      "x": -1.2001,
+      "y": 1.245,
+      "z": -0.0847
+    }
+  },
+  {
+    "id": 3,
+    "text": [
+      {
+        "text": "Digestive System",
+        "lang": "en"
+      }
+    ],
+    "isAnimation": true,
+    "appearFrame": 101,
+    "disappearFrame": 275,
+    "animation": {
+      "frame": {
+        "first_value": 101,
+        "second_value": 275
+      }
+    },
+    "position": {
+      "x": -0.6936,
+      "y": -0.3924,
+      "z": -0.0847
+    }
+  },
+  {
+    "id": 4,
+    "text": [
+      {
+        "text": "Skeletal System",
+        "lang": "en"
+      }
+    ],
+    "isAnimation": true,
+    "appearFrame": 101,
+    "disappearFrame": 275,
+    "animation": {
+      "frame": {
+        "first_value": 101,
+        "second_value": 275
+      }
+    },
+    "position": {
+      "x": -0.1662,
+      "y": 1.2512,
+      "z": -0.0847
+    }
+  },
+  {
+    "id": 5,
+    "text": [
+      {
+        "text": "Circulatory System",
+        "lang": "en"
+      }
+    ],
+    "isAnimation": true,
+    "appearFrame": 101,
+    "disappearFrame": 275,
+    "animation": {
+      "frame": {
+        "first_value": 101,
+        "second_value": 275
+      }
+    },
+    "position": {
+      "x": 0.698,
+      "y": 1.2532,
+      "z": -0.0847
+    }
+  },
+  {
+    "id": 6,
+    "text": [
+      {
+        "text": "Muscular System",
+        "lang": "en"
+      }
+    ],
+    "isAnimation": true,
+    "appearFrame": 101,
+    "disappearFrame": 275,
+    "animation": {
+      "frame": {
+        "first_value": 101,
+        "second_value": 275
+      }
+    },
+    "position": {
+      "x": 1.6035,
+      "y": 1.2438,
+      "z": -0.0847
+    }
+  }
+]
