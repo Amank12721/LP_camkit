@@ -62,8 +62,8 @@ const loadCredentials = async () => {
   return { username, password, role };
 };
 
-const login = async () => {
-  const { username, password, role } = await loadCredentials();
+const authenticate = async (credentials?: { username: string; password: string; role?: string }) => {
+  const { username, password, role } = credentials || await loadCredentials();
   const passwordHash = /^[a-f\d]{64}$/i.test(password)
     ? password
     : createHash('sha256').update(password).digest('hex');
@@ -81,8 +81,23 @@ const login = async () => {
   if (!session.accessToken) throw new Error('CRP login returned no access token.');
 };
 
+export const loginWithCredentials = async (credentials: {
+  username: string;
+  password: string;
+  role?: string;
+}) => {
+  if (!credentials.username.trim() || !credentials.password) {
+    throw new Error('Username and password are required.');
+  }
+  await authenticate({
+    username: credentials.username.trim(),
+    password: credentials.password,
+    role: credentials.role?.trim() || 'internal',
+  });
+};
+
 const refresh = async () => {
-  if (!session.refreshToken) return login();
+  if (!session.refreshToken) return authenticate();
   const response = await fetch(REFRESH_URL, {
     method: 'POST',
     headers: {
@@ -92,7 +107,7 @@ const refresh = async () => {
     body: '{}',
     cache: 'no-store',
   });
-  if (!response.ok) return login();
+  if (!response.ok) return authenticate();
   const payload = await response.json();
   session.accessToken = findString(payload, ['access_token', 'accessToken', 'token']);
   session.refreshToken = findString(payload, ['refresh_token', 'refreshToken']) || session.refreshToken;
@@ -100,7 +115,7 @@ const refresh = async () => {
 };
 
 export const crpRequest = async (url: string, init: RequestInit = {}) => {
-  if (!session.accessToken) await login();
+  if (!session.accessToken) await authenticate();
   const request = () => fetch(url, {
     ...init,
     headers: {

@@ -55,7 +55,38 @@ export default function Home() {
   const [crpStatus, setCrpStatus] = useState('');
   const [crpAudioUrl, setCrpAudioUrl] = useState<string | null>(null);
   const [crpFileName, setCrpFileName] = useState<string | null>(null);
+  const [showManualLogin, setShowManualLogin] = useState(false);
+  const [manualUsername, setManualUsername] = useState('');
+  const [manualPassword, setManualPassword] = useState('');
+  const [manualLoginStatus, setManualLoginStatus] = useState('');
   const cameraBlobUrlRef = useRef<string | null>(null);
+
+  const handleManualLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setCrpLoading(true);
+    setCrpError('');
+    setManualLoginStatus('Logging in...');
+    try {
+      const response = await fetch('/api/crp/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: manualUsername,
+          password: manualPassword,
+          role: 'internal',
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'CRP login failed.');
+      setManualPassword('');
+      setManualLoginStatus('Logged in for this server session');
+    } catch (error) {
+      setManualLoginStatus('');
+      setCrpError(error instanceof Error ? error.message : 'CRP login failed.');
+    } finally {
+      setCrpLoading(false);
+    }
+  };
 
   const handleCrpSearch = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -320,6 +351,48 @@ export default function Home() {
       >
         <h1 className="text-4xl font-bold mb-2">Camera Animation Tool</h1>
         <p className="text-gray-400 mb-5">Fetch a CRP model or load a local 3D file</p>
+
+        <div className="w-full max-w-2xl mb-4">
+          <button
+            type="button"
+            onClick={() => setShowManualLogin((visible) => !visible)}
+            className="text-sm text-cyan-300 hover:text-cyan-200"
+          >
+            {showManualLogin ? '▾ Hide manual login' : '▸ Manual CRP login (optional)'}
+          </button>
+          {showManualLogin && (
+            <form onSubmit={handleManualLogin} className="mt-3 p-4 rounded-lg border border-gray-700 bg-black/40">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  value={manualUsername}
+                  onChange={(event) => setManualUsername(event.target.value)}
+                  autoComplete="username"
+                  placeholder="CRP username"
+                  className="px-3 py-2 rounded bg-gray-900 border border-gray-700 text-white"
+                />
+                <input
+                  type="password"
+                  value={manualPassword}
+                  onChange={(event) => setManualPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="CRP password"
+                  className="px-3 py-2 rounded bg-gray-900 border border-gray-700 text-white"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={crpLoading || !manualUsername.trim() || !manualPassword}
+                className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded"
+              >
+                Login temporarily
+              </button>
+              {manualLoginStatus && <span className="ml-3 text-sm text-green-400">{manualLoginStatus}</span>}
+              <p className="mt-2 text-xs text-gray-500">
+                Password is not saved; tokens stay only in server memory until restart.
+              </p>
+            </form>
+          )}
+        </div>
 
         <form onSubmit={handleCrpSearch} className="w-full max-w-2xl mb-5">
           <div className="flex gap-2">
