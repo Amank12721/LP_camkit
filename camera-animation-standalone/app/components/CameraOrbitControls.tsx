@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from './ui/button';
 import { Camera, RotateCw, Copy, RefreshCw, Plus, Download, Upload, Check, Trash2 } from 'lucide-react';
 import { ModelViewerElement } from '../types/model-viewer';
@@ -11,6 +11,7 @@ interface CameraKeyframe {
   theta: number;
   phi: number;
   radius: number;
+  radiusMeters?: number;
   targetX: number;
   targetY: number;
   targetZ: number;
@@ -34,6 +35,7 @@ interface CameraOrbitControlsProps {
   onSelectedKeyframeChange?: (index: number | null) => void;
   onExpandedChange?: (expanded: boolean) => void;
   onLabelJsonImport?: (labelData: any) => void;
+  cameraResetKey?: string;
 }
 
 const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
@@ -52,6 +54,7 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
   onSelectedKeyframeChange,
   onExpandedChange,
   onLabelJsonImport,
+  cameraResetKey,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -81,7 +84,7 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
   // Camera Orbit values - will be initialized from model-viewer
   const [theta, setTheta] = useState(5);
   const [phi, setPhi] = useState(80);
-  const [radius, setRadius] = useState(105);
+  const [radius, setRadius] = useState(100);
   
   // Camera Target values
   const [targetX, setTargetX] = useState(0);
@@ -108,7 +111,8 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
   // Current running values from model-viewer
   const [currentTheta, setCurrentTheta] = useState(5);
   const [currentPhi, setCurrentPhi] = useState(80);
-  const [currentRadius, setCurrentRadius] = useState(105);
+  const [currentRadius, setCurrentRadius] = useState(100);
+  const idealRadiusRef = useRef<number | null>(null);
   const [currentTargetX, setCurrentTargetX] = useState(0);
   const [currentTargetY, setCurrentTargetY] = useState(0);
   const [currentTargetZ, setCurrentTargetZ] = useState(0);
@@ -116,6 +120,13 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
   
   // Track if we've initialized from model-viewer
   const [hasInitialized, setHasInitialized] = useState(false);
+
+  useEffect(() => {
+    idealRadiusRef.current = null;
+    setHasInitialized(false);
+    setRadius(100);
+    setCurrentRadius(100);
+  }, [cameraResetKey]);
   
   // Keyframes
   const [keyframes, setKeyframes] = useState<CameraKeyframe[]>([]);
@@ -146,19 +157,22 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
     if (!modelViewer || hasInitialized) return;
     
     try {
-      let roundedTheta = 5, roundedPhi = 80, roundedRadius = 105;
+      let roundedTheta = 5, roundedPhi = 80, roundedRadius = 100;
       
       // Read initial camera orbit from model-viewer
       const orbit = (modelViewer as any).getCameraOrbit();
       if (orbit) {
         const thetaDeg = (orbit.theta * 180 / Math.PI);
         const phiDeg = (orbit.phi * 180 / Math.PI);
-        const radiusPercent = orbit.radius * 5; // Convert meters to percentage (20m = 100%)
+        // The model starts at 100%. Its actual meter distance is model-size
+        // dependent, so use it as the per-model baseline instead of assuming
+        // that 20m always equals 100%.
+        idealRadiusRef.current = orbit.radius;
         
         // Set both slider and current values
         roundedTheta = Math.round(thetaDeg);
         roundedPhi = Math.round(phiDeg);
-        roundedRadius = Math.round(radiusPercent);
+        roundedRadius = 100;
         
         setTheta(roundedTheta);
         setPhi(roundedPhi);
@@ -206,7 +220,9 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
       if (orbit) {
         const thetaDeg = (orbit.theta * 180 / Math.PI);
         const phiDeg = (orbit.phi * 180 / Math.PI);
-        const radiusPercent = orbit.radius * 5; // Convert meters to percentage (20m = 100%)
+        const radiusPercent = idealRadiusRef.current && idealRadiusRef.current > 0
+          ? (orbit.radius / idealRadiusRef.current) * 100
+          : currentRadius;
         
         setCurrentTheta(Math.round(thetaDeg));
         setCurrentPhi(Math.round(phiDeg));
@@ -227,7 +243,7 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
     } catch (error) {
       console.error('Error reading camera values:', error);
     }
-  }, [modelViewer]);
+  }, [modelViewer, currentRadius]);
 
   // Update model-viewer when values change
   useEffect(() => {
@@ -290,7 +306,7 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
   const handleReset = () => {
     setTheta(5);
     setPhi(80);
-    setRadius(105);
+    setRadius(100);
     setTargetX(0);
     setTargetY(0);
     setTargetZ(0);
@@ -356,6 +372,16 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
   
   const handleRecordKeyframe = useCallback(() => {
     const currentTime = duration > 0 ? (currentFrame / fps) : 0;
+    const liveOrbit = modelViewer ? (modelViewer as any).getCameraOrbit?.() : null;
+    const liveTarget = modelViewer ? (modelViewer as any).getCameraTarget?.() : null;
+    const liveFov = modelViewer ? (modelViewer as any).getFieldOfView?.() : null;
+    const capturedTheta = liveOrbit ? liveOrbit.theta * 180 / Math.PI : currentTheta;
+    const capturedPhi = liveOrbit ? liveOrbit.phi * 180 / Math.PI : currentPhi;
+    const capturedRadiusMeters = liveOrbit?.radius;
+    const capturedTargetX = liveTarget?.x ?? currentTargetX;
+    const capturedTargetY = liveTarget?.y ?? currentTargetY;
+    const capturedTargetZ = liveTarget?.z ?? currentTargetZ;
+    const capturedFov = liveFov ?? currentFov;
     
     // Check if a keyframe already exists at this frame
     const existingIndex = keyframes.findIndex(kf => kf.frame === currentFrame);
@@ -367,13 +393,14 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
         id: keyframes[existingIndex].id, // Keep the original ID
         frame: currentFrame,
         time: currentTime,
-        theta: currentTheta,
-        phi: currentPhi,
+        theta: capturedTheta,
+        phi: capturedPhi,
         radius: currentRadius,
-        targetX: currentTargetX,
-        targetY: currentTargetY,
-        targetZ: currentTargetZ,
-        fov: currentFov,
+        radiusMeters: capturedRadiusMeters,
+        targetX: capturedTargetX,
+        targetY: capturedTargetY,
+        targetZ: capturedTargetZ,
+        fov: capturedFov,
         name: keyframes[existingIndex].name, // Keep the original name
       };
       setKeyframes(updatedKeyframes);
@@ -385,13 +412,14 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
         id: `kf-${Date.now()}-${Math.random()}`, // Unique ID
         frame: currentFrame,
         time: currentTime,
-        theta: currentTheta,
-        phi: currentPhi,
+        theta: capturedTheta,
+        phi: capturedPhi,
         radius: currentRadius,
-        targetX: currentTargetX,
-        targetY: currentTargetY,
-        targetZ: currentTargetZ,
-        fov: currentFov,
+        radiusMeters: capturedRadiusMeters,
+        targetX: capturedTargetX,
+        targetY: capturedTargetY,
+        targetZ: capturedTargetZ,
+        fov: capturedFov,
         name: `${keyframeName} ${keyframes.length + 1}`,
       };
       
@@ -415,7 +443,7 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
       
       showFeedback(`🎬 Keyframe ${keyframes.length + 1} recorded at frame ${currentFrame}`);
     }
-  }, [currentFrame, duration, fps, currentTheta, currentPhi, currentRadius, currentTargetX, currentTargetY, currentTargetZ, currentFov, keyframeName, keyframes, onKeyframesChange]);
+  }, [currentFrame, duration, fps, currentTheta, currentPhi, currentRadius, currentTargetX, currentTargetY, currentTargetZ, currentFov, keyframeName, keyframes, onKeyframesChange, modelViewer]);
   
   const handleDeleteKeyframe = (index: number) => {
     const deletedKeyframe = keyframes[index];
@@ -449,13 +477,14 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
             id: `kf-imported-${Date.now()}-${idx}`, // Assign unique ID
             frame: kf.frame,
             time: kf.time,
-            theta: kf.properties.theta[0] || 0,
-            phi: kf.properties.phi[0] || 75,
-            radius: kf.properties.radius[0] || 105,
-            targetX: kf.properties.targetX[0] || 0,
-            targetY: kf.properties.targetY[0] || 0,
-            targetZ: kf.properties.targetZ[0] || 0,
-            fov: kf.properties.fov[0] || 45,
+            theta: kf.properties.theta[0] ?? 0,
+            phi: kf.properties.phi[0] ?? 75,
+            radius: kf.properties.radius[0] ?? 100,
+            radiusMeters: kf.properties.radiusMeters?.[0],
+            targetX: kf.properties.targetX[0] ?? 0,
+            targetY: kf.properties.targetY[0] ?? 0,
+            targetZ: kf.properties.targetZ[0] ?? 0,
+            fov: kf.properties.fov[0] ?? 45,
             name: kf.name || 'Imported Keyframe',
           }));
           
@@ -567,6 +596,7 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
           theta: [kf.theta],
           phi: [kf.phi],
           radius: [kf.radius],
+          ...(kf.radiusMeters !== undefined ? { radiusMeters: [kf.radiusMeters] } : {}),
           targetX: [kf.targetX],
           targetY: [kf.targetY],
           targetZ: [kf.targetZ],
@@ -632,7 +662,10 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
     
     if (exactKeyframe) {
       // Use exact keyframe values (no interpolation)
-      modelViewer.cameraOrbit = `${exactKeyframe.theta}deg ${exactKeyframe.phi}deg ${exactKeyframe.radius}%`;
+      const exactRadius = exactKeyframe.radiusMeters !== undefined
+        ? `${exactKeyframe.radiusMeters}m`
+        : `${exactKeyframe.radius}%`;
+      modelViewer.cameraOrbit = `${exactKeyframe.theta}deg ${exactKeyframe.phi}deg ${exactRadius}`;
       modelViewer.cameraTarget = `${exactKeyframe.targetX}m ${exactKeyframe.targetY}m ${exactKeyframe.targetZ}m`;
       modelViewer.fieldOfView = `${exactKeyframe.fov}deg`;
       return;
@@ -671,24 +704,29 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
 
       const interpolatedTheta = lerpAngle(prevKeyframe.theta, nextKeyframe.theta, t);
       const interpolatedPhi = lerp(prevKeyframe.phi, nextKeyframe.phi, t);
-      const interpolatedRadius = lerp(prevKeyframe.radius, nextKeyframe.radius, t);
+      const useMeterRadius = prevKeyframe.radiusMeters !== undefined && nextKeyframe.radiusMeters !== undefined;
+      const interpolatedRadius = useMeterRadius
+        ? lerp(prevKeyframe.radiusMeters!, nextKeyframe.radiusMeters!, t)
+        : lerp(prevKeyframe.radius, nextKeyframe.radius, t);
       const interpolatedTargetX = lerp(prevKeyframe.targetX, nextKeyframe.targetX, t);
       const interpolatedTargetY = lerp(prevKeyframe.targetY, nextKeyframe.targetY, t);
       const interpolatedTargetZ = lerp(prevKeyframe.targetZ, nextKeyframe.targetZ, t);
       const interpolatedFov = lerp(prevKeyframe.fov, nextKeyframe.fov, t);
 
       // Apply to model-viewer
-      modelViewer.cameraOrbit = `${interpolatedTheta}deg ${interpolatedPhi}deg ${interpolatedRadius}%`;
+      modelViewer.cameraOrbit = `${interpolatedTheta}deg ${interpolatedPhi}deg ${interpolatedRadius}${useMeterRadius ? 'm' : '%'}`;
       modelViewer.cameraTarget = `${interpolatedTargetX}m ${interpolatedTargetY}m ${interpolatedTargetZ}m`;
       modelViewer.fieldOfView = `${interpolatedFov}deg`;
     } else if (prevKeyframe && !nextKeyframe) {
       // We're past the last keyframe, hold position
-      modelViewer.cameraOrbit = `${prevKeyframe.theta}deg ${prevKeyframe.phi}deg ${prevKeyframe.radius}%`;
+      const heldRadius = prevKeyframe.radiusMeters !== undefined ? `${prevKeyframe.radiusMeters}m` : `${prevKeyframe.radius}%`;
+      modelViewer.cameraOrbit = `${prevKeyframe.theta}deg ${prevKeyframe.phi}deg ${heldRadius}`;
       modelViewer.cameraTarget = `${prevKeyframe.targetX}m ${prevKeyframe.targetY}m ${prevKeyframe.targetZ}m`;
       modelViewer.fieldOfView = `${prevKeyframe.fov}deg`;
     } else if (!prevKeyframe && nextKeyframe && currentFrame < nextKeyframe.frame) {
       // We're before the first keyframe, apply first keyframe values
-      modelViewer.cameraOrbit = `${nextKeyframe.theta}deg ${nextKeyframe.phi}deg ${nextKeyframe.radius}%`;
+      const firstRadius = nextKeyframe.radiusMeters !== undefined ? `${nextKeyframe.radiusMeters}m` : `${nextKeyframe.radius}%`;
+      modelViewer.cameraOrbit = `${nextKeyframe.theta}deg ${nextKeyframe.phi}deg ${firstRadius}`;
       modelViewer.cameraTarget = `${nextKeyframe.targetX}m ${nextKeyframe.targetY}m ${nextKeyframe.targetZ}m`;
       modelViewer.fieldOfView = `${nextKeyframe.fov}deg`;
     }

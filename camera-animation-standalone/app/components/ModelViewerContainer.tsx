@@ -296,13 +296,14 @@ export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJs
             id: `kf-auto-${Date.now()}-${idx}`,
             frame: kf.frame,
             time: kf.time,
-            theta: kf.properties.theta[0] || 0,
-            phi: kf.properties.phi[0] || 75,
-            radius: kf.properties.radius[0] || 105,
-            targetX: kf.properties.targetX[0] || 0,
-            targetY: kf.properties.targetY[0] || 0,
-            targetZ: kf.properties.targetZ[0] || 0,
-            fov: kf.properties.fov[0] || 45,
+            theta: kf.properties.theta[0] ?? 0,
+            phi: kf.properties.phi[0] ?? 75,
+            radius: kf.properties.radius[0] ?? 100,
+            radiusMeters: kf.properties.radiusMeters?.[0],
+            targetX: kf.properties.targetX[0] ?? 0,
+            targetY: kf.properties.targetY[0] ?? 0,
+            targetZ: kf.properties.targetZ[0] ?? 0,
+            fov: kf.properties.fov[0] ?? 45,
             name: kf.name || 'Auto-loaded Keyframe',
           }));
           
@@ -438,13 +439,14 @@ export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJs
             id: `kf-imported-${Date.now()}-${idx}`,
             frame: kf.frame,
             time: kf.time,
-            theta: kf.properties.theta[0] || 0,
-            phi: kf.properties.phi[0] || 75,
-            radius: kf.properties.radius[0] || 105,
-            targetX: kf.properties.targetX[0] || 0,
-            targetY: kf.properties.targetY[0] || 0,
-            targetZ: kf.properties.targetZ[0] || 0,
-            fov: kf.properties.fov[0] || 45,
+            theta: kf.properties.theta[0] ?? 0,
+            phi: kf.properties.phi[0] ?? 75,
+            radius: kf.properties.radius[0] ?? 100,
+            radiusMeters: kf.properties.radiusMeters?.[0],
+            targetX: kf.properties.targetX[0] ?? 0,
+            targetY: kf.properties.targetY[0] ?? 0,
+            targetZ: kf.properties.targetZ[0] ?? 0,
+            fov: kf.properties.fov[0] ?? 45,
             name: kf.name || 'Imported Keyframe',
           }));
           
@@ -484,7 +486,7 @@ export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJs
         tone-mapping={toneMapping}
         tone-mapping-exposure={toneMappingExposure.toString()}
         color-space="srgb"
-        camera-orbit="5deg 80deg 20m"
+        camera-orbit="5deg 80deg 100%"
         exposure-compensation="0.5"
         environment-intensity="1.0"
         emissive-strength="2.0"
@@ -636,6 +638,7 @@ export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJs
         onSelectedKeyframeChange={setSelectedKeyframeIndex}
         onExpandedChange={setIsCameraControlsExpanded}
         onLabelJsonImport={handleLabelJsonImport}
+        cameraResetKey={modelUrl}
       />
 
       {/* Timeline */}
