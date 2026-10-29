@@ -10,9 +10,11 @@ interface ModelViewerContainerProps {
   onChangeModel: (e: React.ChangeEvent<HTMLInputElement>) => void;
   cameraJsonUrl?: string; // Optional URL to automatically load camera JSON
   labelData?: any; // Optional label JSON data for AR labels/hotspots
+  initialAudioUrl?: string; // Optional CRP audio signed URL
+  downloadFileName?: string; // Optional CRP GLB filename
 }
 
-export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJsonUrl, labelData: initialLabelData }: ModelViewerContainerProps) {
+export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJsonUrl, labelData: initialLabelData, initialAudioUrl, downloadFileName }: ModelViewerContainerProps) {
   const modelViewerRef = useRef<ModelViewerElement | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [animationDuration, setAnimationDuration] = useState(0);
@@ -35,6 +37,18 @@ export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJs
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [audioVolume, setAudioVolume] = useState<number>(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!initialAudioUrl) return;
+    if (audioRef.current) audioRef.current.pause();
+    const audio = new Audio(initialAudioUrl);
+    audio.volume = audioVolume;
+    audio.loop = false;
+    audioRef.current = audio;
+    setAudioUrl(initialAudioUrl);
+    setAudioElement(audio);
+    return () => audio.pause();
+  }, [initialAudioUrl]);
 
   // Update label data when initial prop changes
   useEffect(() => {
@@ -497,6 +511,15 @@ export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJs
 
       {/* Top Bar - Left Side */}
       <div className="absolute top-4 left-4 z-50 flex gap-2">
+        {downloadFileName && (
+          <a
+            href={`/api/crp/download?file_name=${encodeURIComponent(downloadFileName)}`}
+            download={downloadFileName}
+            className="px-4 py-2 bg-cyan-600/70 hover:bg-cyan-600 text-white border border-cyan-400 rounded-lg transition-colors"
+          >
+            ⬇️ Download GLB
+          </a>
+        )}
         <label className="px-4 py-2 bg-black/50 hover:bg-black/70 text-white border border-blue-500/50 rounded-lg cursor-pointer transition-colors">
           📁 Change Model
           <input
@@ -604,7 +627,10 @@ export default function ModelViewerContainer({ modelUrl, onChangeModel, cameraJs
         currentFrame={currentFrame}
         duration={animationDuration}
         fps={24}
+        keyframes={cameraKeyframes}
         onKeyframesChange={setCameraKeyframes}
+        cameraPlaybackEnabled={isCameraPlaybackEnabled}
+        onCameraPlaybackEnabledChange={setIsCameraPlaybackEnabled}
         isPlaying={isAnimationPlaying}
         selectedKeyframeIndex={selectedKeyframeIndex}
         onSelectedKeyframeChange={setSelectedKeyframeIndex}

@@ -25,7 +25,10 @@ interface CameraOrbitControlsProps {
   currentFrame?: number;
   duration?: number;
   fps?: number;
+  keyframes?: CameraKeyframe[];
   onKeyframesChange?: (keyframes: CameraKeyframe[]) => void;
+  cameraPlaybackEnabled?: boolean;
+  onCameraPlaybackEnabledChange?: (enabled: boolean) => void;
   isPlaying?: boolean;
   selectedKeyframeIndex?: number | null;
   onSelectedKeyframeChange?: (index: number | null) => void;
@@ -40,7 +43,10 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
   currentFrame = 0,
   duration = 0,
   fps = 24,
+  keyframes: externalKeyframes = [],
   onKeyframesChange,
+  cameraPlaybackEnabled: externalCameraPlaybackEnabled = true,
+  onCameraPlaybackEnabledChange,
   isPlaying = false,
   selectedKeyframeIndex: externalSelectedIndex = null,
   onSelectedKeyframeChange,
@@ -54,7 +60,10 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
     onExpandedChange?.(isExpanded);
   }, [isExpanded, onExpandedChange]);
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
-  const [cameraPlaybackEnabled, setCameraPlaybackEnabled] = useState(true);
+  const cameraPlaybackEnabled = externalCameraPlaybackEnabled;
+  const setCameraPlaybackEnabled = (enabled: boolean) => {
+    onCameraPlaybackEnabledChange?.(enabled);
+  };
   const [isAdjustingSliders, setIsAdjustingSliders] = useState(false);
   
   // Use external selection if provided, otherwise use internal state
@@ -119,6 +128,18 @@ const CameraOrbitControls: React.FC<CameraOrbitControlsProps> = ({
       id: kf.id || `kf-${Date.now()}-${idx}-${Math.random()}`,
     }));
   };
+
+  // Keep the editable control list in sync with camera JSON loaded by the
+  // parent, CRP imports, and keyframe dragging on the timeline.
+  useEffect(() => {
+    setKeyframes(ensureKeyframeIds(externalKeyframes));
+  }, [externalKeyframes]);
+
+  useEffect(() => {
+    if (selectedKeyframeIndex !== null && selectedKeyframeIndex >= keyframes.length) {
+      setSelectedKeyframeIndex(null);
+    }
+  }, [keyframes.length, selectedKeyframeIndex]);
 
   // Initialize slider values from model-viewer on first load
   useEffect(() => {
